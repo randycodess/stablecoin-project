@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Settlement Router</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #080c10; --surface: #0e1419; --border: #1a2332;
+      --accent: #00d4aa; --accent2: #0099ff; --accent3: #ff6b35;
+      --text: #e8f0f7; --muted: #4a6380; --card: #0b1118;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; overflow-x:hidden; }
+    body::before {
+      content:''; position:fixed; inset:0;
+      background-image: linear-gradient(rgba(0,212,170,.03) 1px,transparent 1px), linear-gradient(90deg,rgba(0,212,170,.03) 1px,transparent 1px);
+      background-size:40px 40px; pointer-events:none; z-index:0;
+    }
+    .glow-orb { position:fixed; width:600px; height:600px; border-radius:50%; filter:blur(120px); pointer-events:none; z-index:0; opacity:.12; }
+    .glow-orb-1 { background:var(--accent); top:-200px; right:-100px; }
+    .glow-orb-2 { background:var(--accent2); bottom:-200px; left:-100px; }
+    .container { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:0 24px; }
+
+    /* Header */
+    header { padding:40px 0 0; }
+    .header-inner { display:flex; align-items:center; justify-content:space-between; margin-bottom:32px; }
+    .logo { display:flex; align-items:center; gap:14px; }
+    .logo-icon { width:40px; height:40px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .logo-text { font-family:'Plus Jakarta Sans',sans-serif; font-size:18px; font-weight:700; letter-spacing:-.02em; }
+    .logo-sub { font-size:10px; color:var(--muted); letter-spacing:.15em; text-transform:uppercase; margin-top:2px; }
+
+    /* Tabs */
+    .tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:40px; }
+    .tab-btn {
+      padding:14px 28px; font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; font-weight:600;
+      letter-spacing:.05em; text-transform:uppercase; cursor:pointer; border:none; background:none;
+      color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .2s;
+    }
+    .tab-btn:hover { color:var(--text); }
+    .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab-btn.sim.active { color:var(--accent2); border-bottom-color:var(--accent2); }
+    .tab-panel { display:none; animation:fadeUp .4s ease both; }
+    .tab-panel.active { display:block; }
+
+    /* Hero */
+    .hero { margin-bottom:36px; }
+    .hero h1 { font-family:'Plus Jakarta Sans',sans-serif; font-size:clamp(28px,4vw,44px); font-weight:800; line-height:1.1; letter-spacing:-.03em; margin-bottom:12px; }
+    .hero h1 span.green { background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .hero h1 span.blue { background:linear-gradient(90deg,var(--accent2),#7c3aed); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .hero p { color:var(--muted); font-size:13px; line-height:1.7; max-width:540px; }
+    .sim-notice { display:inline-flex; align-items:center; gap:8px; margin-top:12px; font-size:11px; color:#f59e0b; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.2); border-radius:6px; padding:6px 12px; }
+
+    /* Panel */
+    .panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px 32px; margin-bottom:24px; }
+    .panel-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:11px; font-weight:600; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); margin-bottom:20px; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:14px; margin-bottom:20px; }
+    .form-group { display:flex; flex-direction:column; gap:7px; }
+    .form-group label { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+    .form-group select, .form-group input {
+      background:var(--surface); border:1px solid var(--border); color:var(--text);
+      font-family:'Inter',sans-serif; font-size:13px; padding:10px 14px; border-radius:8px;
+      outline:none; transition:border-color .2s; appearance:none; -webkit-appearance:none;
+    }
+    .form-group select:focus, .form-group input:focus { border-color:var(--accent); }
+    .sim-tab .form-group select:focus, .sim-tab .form-group input:focus { border-color:var(--accent2); }
+    .slider-row { display:flex; align-items:center; gap:16px; margin-bottom:20px; }
+    .slider-label { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+    input[type=range] { flex:1; accent-color:var(--accent); height:4px; }
+    .sim-tab input[type=range] { accent-color:var(--accent2); }
+    .slider-value { font-size:12px; color:var(--accent); min-width:120px; text-align:right; }
+    .sim-tab .slider-value { color:var(--accent2); }
+
+    .btn-route {
+      width:100%; padding:13px; background:linear-gradient(135deg,var(--accent),var(--accent2));
+      border:none; border-radius:10px; color:#080c10; font-family:'Plus Jakarta Sans',sans-serif;
+      font-size:14px; font-weight:700; letter-spacing:.05em; cursor:pointer; transition:opacity .2s,transform .1s;
+    }
+    .btn-route.sim { background:linear-gradient(135deg,var(--accent2),#7c3aed); }
+    .btn-route:hover { opacity:.9; transform:translateY(-1px); }
+    .btn-route:active { transform:translateY(0); }
+    .btn-route:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+
+    /* Results */
+    .results { display:none; }
+    .results.visible { display:block; animation:fadeUp .5s ease both; }
+
+    .best-route-card { background:var(--card); border:1px solid rgba(0,212,170,.25); border-radius:16px; padding:28px 32px; margin-bottom:20px; position:relative; overflow:hidden; }
+    .best-route-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+    .best-route-card.sim { border-color:rgba(0,153,255,.25); }
+    .best-route-card.sim::before { background:linear-gradient(90deg,var(--accent2),#7c3aed); }
+
+    .result-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+    .result-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:11px; font-weight:600; letter-spacing:.15em; text-transform:uppercase; color:var(--accent); }
+    .result-title.blue { color:var(--accent2); }
+    .score-badge { font-size:11px; color:var(--muted); border:1px solid var(--border); padding:4px 10px; border-radius:4px; }
+
+    .route-path { display:flex; flex-direction:column; align-items:flex-start; gap:0; margin-bottom:28px; }
+    .chain-node {
+      display:flex; align-items:center; gap:12px; background:var(--surface);
+      border:1px solid var(--border); border-radius:10px; padding:10px 18px;
+      font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; font-weight:700;
+      text-transform:uppercase; letter-spacing:.05em;
+    }
+    .chain-connector { display:flex; align-items:stretch; }
+    .connector-line { display:flex; flex-direction:column; align-items:center; width:36px; padding:0 18px; }
+    .connector-line .vline { width:2px; flex:1; background:var(--border); min-height:8px; }
+    .connector-line .arrow { color:var(--muted); font-size:14px; line-height:1; }
+    .connector-info { display:flex; flex-direction:column; justify-content:center; gap:4px; padding:6px 0; margin-left:4px; }
+    .connector-name { font-size:11px; color:var(--text); }
+    .connector-meta { display:flex; gap:16px; }
+    .connector-meta span { font-size:11px; }
+
+    .stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:24px; }
+    .stat-box { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 18px; }
+    .stat-label { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+    .stat-value { font-family:'Plus Jakarta Sans',sans-serif; font-size:20px; font-weight:700; }
+    .stat-value.green { color:var(--accent); }
+    .stat-value.blue  { color:var(--accent2); }
+    .stat-value.orange{ color:var(--accent3); }
+
+    .hop-breakdown-title { font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
+    .hop-row { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; background:var(--surface); border-radius:8px; margin-bottom:7px; font-size:12px; border:1px solid var(--border); }
+    .reliability-bar { width:50px; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+    .reliability-fill { height:100%; background:var(--accent); border-radius:2px; }
+
+    /* Fee sensitivity chart */
+    .chart-panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px 32px; margin-bottom:20px; }
+    .chart-toggle {
+      display:flex; align-items:center; gap:10px; cursor:pointer;
+      font-family:'Plus Jakarta Sans',sans-serif; font-size:11px; font-weight:600;
+      letter-spacing:.15em; text-transform:uppercase; color:var(--muted);
+      background:none; border:none; padding:0; transition:color .2s;
+    }
+    .chart-toggle:hover { color:var(--text); }
+    .chart-toggle .chevron { font-size:14px; transition:transform .25s; }
+    .chart-toggle.open .chevron { transform:rotate(90deg); }
+    .chart-body { display:none; margin-top:20px; }
+    .chart-body.open { display:block; }
+    .chart-loading { color:var(--muted); font-size:12px; display:flex; align-items:center; gap:8px; }
+    .chart-wrap { position:relative; height:260px; }
+    .chart-tabs { display:flex; gap:8px; margin-bottom:16px; }
+    .chart-tab { font-size:11px; padding:4px 12px; border-radius:4px; cursor:pointer; border:1px solid var(--border); color:var(--muted); background:none; transition:all .15s; }
+    .chart-tab.active { background:rgba(0,212,170,.12); color:var(--accent); border-color:rgba(0,212,170,.3); }
+    .chart-tab.active.blue { background:rgba(0,153,255,.12); color:var(--accent2); border-color:rgba(0,153,255,.3); }
+
+    /* SWIFT */
+    .swift-panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px 32px; margin-bottom:20px; position:relative; overflow:hidden; }
+    .swift-panel::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--accent3),#ff8c00); }
+    .swift-table { width:100%; border-collapse:collapse; margin-top:16px; font-size:12px; }
+    .swift-table thead th { padding:9px 14px; text-align:left; font-size:9px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; font-family:'Plus Jakarta Sans',sans-serif; border-bottom:1px solid var(--border); color:var(--muted); }
+    .swift-table thead th.col-crypto { color:var(--accent); border-bottom-color:rgba(0,212,170,.35); }
+    .swift-table thead th.col-swift  { color:#ff8c00; border-bottom-color:rgba(255,140,0,.25); }
+    .swift-table tbody td { padding:12px 14px; border-bottom:1px solid rgba(26,35,50,.6); vertical-align:middle; }
+    .swift-table tbody tr:last-child td { border-bottom:none; }
+    .swift-table tbody td:first-child { color:var(--muted); font-size:10px; letter-spacing:.08em; text-transform:uppercase; width:150px; font-family:'Plus Jakarta Sans',sans-serif; font-weight:600; }
+    .swift-table .col-crypto { color:var(--text); font-weight:500; }
+    .swift-table .col-swift  { color:#6b7b8d; }
+    .swift-table .better     { color:var(--accent)!important; }
+    .swift-table .save-row   { background:rgba(0,212,170,.06); }
+    .swift-table .save-row td { border-bottom:none!important; padding:16px 14px; }
+    .swift-table .save-row td:first-child { font-size:11px; font-weight:800; color:var(--accent); letter-spacing:.12em; }
+    .save-amount { font-family:'Plus Jakarta Sans',sans-serif; font-size:22px; font-weight:800; color:var(--accent); line-height:1.1; }
+    .save-amount.negative { color:var(--accent3); }
+    .save-sub { font-size:11px; color:var(--muted); margin-top:3px; }
+
+    /* Insights */
+    .insights-panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px 32px; margin-bottom:20px; }
+    .insights-header { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+    .ai-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); animation:pulse 2s ease infinite; }
+    .ai-dot.blue { background:var(--accent2); }
+    .insights-text { font-size:13px; line-height:1.8; color:var(--text); }
+
+    /* Other routes */
+    .other-routes { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:28px 32px; margin-bottom:32px; }
+    .other-route-row { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-radius:8px; border:1px solid var(--border); margin-bottom:8px; font-size:12px; transition:border-color .2s; }
+    .other-route-row:hover { border-color:var(--muted); }
+    .route-rank { font-family:'Plus Jakarta Sans',sans-serif; font-size:11px; font-weight:700; color:var(--muted); min-width:24px; }
+
+    /* Error & progress */
+    .error-msg { background:rgba(255,107,53,.1); border:1px solid rgba(255,107,53,.3); border-radius:10px; padding:14px 18px; color:var(--accent3); font-size:13px; margin-bottom:20px; display:none; }
+    #progressBox, #simProgressBox { margin:16px 0; padding:16px 20px; background:var(--surface); border:1px solid var(--border); border-radius:12px; display:none; }
+    .progress-title { font-size:12px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:.08em; }
+    .progress-log { font-family:monospace; font-size:12px; color:var(--text); display:flex; flex-direction:column; gap:4px; }
+
+    /* Data source badge */
+    .ds-badge { font-size:10px; padding:3px 8px; border-radius:4px; letter-spacing:.08em; }
+    .ds-live { background:rgba(0,212,170,.15); color:var(--accent); border:1px solid rgba(0,212,170,.3); }
+    .ds-sim  { background:rgba(245,158,11,.1); color:#f59e0b; border:1px solid rgba(245,158,11,.25); }
+
+    footer { border-top:1px solid var(--border); padding:24px 0; margin-top:24px; text-align:center; color:var(--muted); font-size:11px; letter-spacing:.08em; }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.3} }
+    @keyframes spin   { to{transform:rotate(360deg)} }
+    .spinner { width:13px; height:13px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; display:inline-block; }
+
+    @media(max-width:700px) {
+      .form-grid { grid-template-columns:1fr 1fr; }
+      .stats-row { grid-template-columns:1fr 1fr; }
+      .header-inner { flex-direction:column; align-items:flex-start; gap:10px; }
+    }
+  </style>
+</head>
+<body>
+<div class="glow-orb glow-orb-1"></div>
+<div class="glow-orb glow-orb-2"></div>
+
+<div class="container">
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <div class="logo-text">Settlement Router</div>
+          <div class="logo-sub">Stablecoin Prototype</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn sim active" onclick="switchTab('sim')">🧪 Simulator</button>
+      <button class="tab-btn" onclick="switchTab('live')">⚡ Live</button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════ LIVE TAB ══ -->
+  <div id="tab-live" class="tab-panel">
+    <div class="hero">
+      <h1>Find the <span class="green">optimal path</span><br/>for your payment.</h1>
+      <p>Real quotes from Across Protocol. USDC only · 5 EVM chains · Live fee data.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">// Configure Transfer</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Source Chain</label><select id="liveSource"></select></div>
+        <div class="form-group"><label>Token</label><select id="liveToken"><option value="USDC">USDC</option></select></div>
+        <div class="form-group"><label>Destination</label><select id="liveTarget"></select></div>
+        <div class="form-group"><label>Amount (USD)</label><input type="number" id="liveAmount" value="5000" min="1" step="100"/></div>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Optimise for</span>
+        <input type="range" id="liveFeeWeight" min="0" max="1" step="0.1" value="0.6" oninput="updateSlider('liveSliderLabel',this.value)"/>
+        <span class="slider-value" id="liveSliderLabel">60% Fee / 40% Speed</span>
+      </div>
+      <button class="btn-route" id="liveBtn" onclick="findLiveRoute()">Find Best Route →</button>
+    </div>
+
+    <div class="error-msg" id="liveError"></div>
+    <div id="progressBox"><div class="progress-title">Fetching live quotes</div><div class="progress-log" id="progressLog"></div></div>
+
+    <div class="results" id="liveResults">
+      <div class="best-route-card" id="liveBestCard">
+        <div class="result-header">
+          <div class="result-title">// Optimal Route</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="ds-badge ds-live">⚡ Live</span>
+            <span class="score-badge" id="liveScoreVal">score: -</span>
+          </div>
+        </div>
+        <div class="route-path" id="liveRoutePath"></div>
+        <div class="stats-row">
+          <div class="stat-box"><div class="stat-label">Total Fee</div><div class="stat-value green" id="liveStatFee">-</div></div>
+          <div class="stat-box"><div class="stat-label">Latency</div><div class="stat-value blue" id="liveStatLatency">-</div></div>
+          <div class="stat-box"><div class="stat-label">Hops</div><div class="stat-value orange" id="liveStatHops">-</div></div>
+        </div>
+        <div class="hop-breakdown-title">// Hop breakdown</div>
+        <div id="liveHopsList"></div>
+      </div>
+
+      <!-- Fee sensitivity chart (live) -->
+      <div class="chart-panel">
+        <button class="chart-toggle" id="liveChartToggle" onclick="toggleChart('live')">
+          <span class="chevron">›</span> Show Fee Analysis
+        </button>
+        <div class="chart-body" id="liveChartBody">
+          <div id="liveChartLoading" class="chart-loading"><span class="spinner"></span> Fetching quotes at multiple amounts — this may take ~10s...</div>
+          <div id="liveChartContent" style="display:none">
+            <div class="chart-tabs">
+              <button class="chart-tab active" onclick="switchChartView('live','fee')">Fee (USD)</button>
+              <button class="chart-tab" onclick="switchChartView('live','pct')">Fee (%)</button>
+              <button class="chart-tab" onclick="switchChartView('live','vs')">vs SWIFT</button>
+            </div>
+            <div class="chart-wrap"><canvas id="liveChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SWIFT comparison -->
+      <div class="swift-panel">
+        <div class="panel-title">// vs Traditional SWIFT Wire</div>
+        <table class="swift-table">
+          <thead><tr><th>Metric</th><th class="col-crypto">This Route</th><th class="col-swift">SWIFT Wire</th></tr></thead>
+          <tbody id="liveSwiftBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Insights -->
+      <div class="insights-panel">
+        <div class="insights-header">
+          <div class="ai-dot"></div>
+          <div class="panel-title" style="margin-bottom:0">// Route Insights</div>
+        </div>
+        <div class="insights-text" id="liveInsights"></div>
+      </div>
+
+      <!-- Other routes -->
+      <div class="other-routes">
+        <div class="panel-title" style="margin-bottom:16px">// Other Routes Considered</div>
+        <div id="liveOtherRoutes"></div>
+      </div>
+    </div>
+  </div><!-- /live tab -->
+
+
+  <!-- ═══════════════════════════════════════════ SIM TAB ══ -->
+  <div id="tab-sim" class="tab-panel sim-tab active">
+    <div class="hero">
+      <h1>Explore routes across <span class="blue">9 chains.</span></h1>
+      <p>Simulated routing using realistic mock data. USDC + USDT · Includes Avalanche, BNB Chain, Linea, and Solana.</p>
+      <div class="sim-notice">⚠️ Simulated — fees are estimated, not live quotes</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">// Configure Transfer</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Source Chain</label><select id="simSource"></select></div>
+        <div class="form-group"><label>Token</label><select id="simToken"><option value="USDC">USDC</option><option value="USDT">USDT</option></select></div>
+        <div class="form-group"><label>Destination</label><select id="simTarget"></select></div>
+        <div class="form-group"><label>Amount (USD)</label><input type="number" id="simAmount" value="5000" min="1" step="100"/></div>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">Optimise for</span>
+        <input type="range" id="simFeeWeight" min="0" max="1" step="0.1" value="0.6" oninput="updateSlider('simSliderLabel',this.value)"/>
+        <span class="slider-value" id="simSliderLabel">60% Fee / 40% Speed</span>
+      </div>
+      <button class="btn-route sim" id="simBtn" onclick="findSimRoute()">Simulate Route →</button>
+    </div>
+
+    <div class="error-msg" id="simError"></div>
+    <div id="simProgressBox"><div class="progress-title">Computing...</div><div class="progress-log" id="simProgressLog"></div></div>
+
+    <div class="results" id="simResults">
+      <div class="best-route-card sim" id="simBestCard">
+        <div class="result-header">
+          <div class="result-title blue">// Optimal Route</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="ds-badge ds-sim">⚠️ Simulated</span>
+            <span class="score-badge" id="simScoreVal">score: -</span>
+          </div>
+        </div>
+        <div class="route-path" id="simRoutePath"></div>
+        <div class="stats-row">
+          <div class="stat-box"><div class="stat-label">Total Fee</div><div class="stat-value blue" id="simStatFee">-</div></div>
+          <div class="stat-box"><div class="stat-label">Latency</div><div class="stat-value blue" id="simStatLatency">-</div></div>
+          <div class="stat-box"><div class="stat-label">Hops</div><div class="stat-value orange" id="simStatHops">-</div></div>
+        </div>
+        <div class="hop-breakdown-title">// Hop breakdown</div>
+        <div id="simHopsList"></div>
+      </div>
+
+      <!-- Fee sensitivity chart (sim) -->
+      <div class="chart-panel">
+        <button class="chart-toggle" id="simChartToggle" onclick="toggleChart('sim')">
+          <span class="chevron">›</span> Show Fee Analysis
+        </button>
+        <div class="chart-body" id="simChartBody">
+          <div id="simChartLoading" class="chart-loading" style="display:none"><span class="spinner"></span> Computing...</div>
+          <div id="simChartContent" style="display:none">
+            <div class="chart-tabs">
+              <button class="chart-tab active blue" onclick="switchChartView('sim','fee')">Fee (USD)</button>
+              <button class="chart-tab" onclick="switchChartView('sim','pct')">Fee (%)</button>
+              <button class="chart-tab" onclick="switchChartView('sim','vs')">vs SWIFT</button>
+            </div>
+            <div class="chart-wrap"><canvas id="simChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SWIFT comparison -->
+      <div class="swift-panel">
+        <div class="panel-title">// vs Traditional SWIFT Wire</div>
+        <table class="swift-table">
+          <thead><tr><th>Metric</th><th class="col-crypto">This Route</th><th class="col-swift">SWIFT Wire</th></tr></thead>
+          <tbody id="simSwiftBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Insights -->
+      <div class="insights-panel">
+        <div class="insights-header">
+          <div class="ai-dot blue"></div>
+          <div class="panel-title" style="margin-bottom:0">// Route Insights</div>
+        </div>
+        <div class="insights-text" id="simInsights"></div>
+      </div>
+
+      <!-- Other routes -->
+      <div class="other-routes">
+        <div class="panel-title" style="margin-bottom:16px">// Other Routes Considered</div>
+        <div id="simOtherRoutes"></div>
+      </div>
+    </div>
+  </div><!-- /sim tab -->
+
+  <footer>stablecoin-settlement-router · Live via Across Protocol · Simulator via mock data</footer>
+</div><!-- /container -->
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  live: { route: null, amount: 5000, stablecoin: 'USDC', chartData: null, chartView: 'fee', chartLoaded: false, chartInstance: null },
+  sim:  { route: null, amount: 5000, stablecoin: 'USDC', chartData: null, chartView: 'fee', chartLoaded: false, chartInstance: null },
+};
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&name==='sim')||(i===1&&name==='live')));
+  document.getElementById('tab-live').classList.toggle('active', name==='live');
+  document.getElementById('tab-sim').classList.toggle('active', name==='sim');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function updateSlider(id, val) {
+  const f = Math.round(val*100), s = 100-f;
+  document.getElementById(id).textContent = `${f}% Fee / ${s}% Speed`;
+}
+
+function fmt(sec) {
+  if (sec < 60) return `${Math.round(sec)}s`;
+  if (sec < 3600) return `${(sec/60).toFixed(1)}m`;
+  return `${(sec/3600).toFixed(1)}h`;
+}
+
+function fmtAmt(n) {
+  if (n >= 1_000_000) return `$${(n/1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `$${(n/1_000).toFixed(0)}k`;
+  return `$${n}`;
+}
+
+// ── Load chains ───────────────────────────────────────────────────────────────
+async function loadChains() {
+  const [live, sim] = await Promise.all([
+    fetch('/api/chains').then(r=>r.json()),
+    fetch('/api/sim/chains').then(r=>r.json()),
+  ]);
+
+  function populate(sourceId, targetId, chains, defaultSrc, defaultDst) {
+    const s = document.getElementById(sourceId);
+    const t = document.getElementById(targetId);
+    chains.forEach(c => {
+      s.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+      t.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+    });
+    s.value = defaultSrc; t.value = defaultDst;
+  }
+
+  populate('liveSource','liveTarget', live, 'ethereum','arbitrum');
+  populate('simSource','simTarget', sim, 'ethereum','solana');
+}
+loadChains();
+
+// ── Route path renderer ───────────────────────────────────────────────────────
+function renderRoutePath(containerId, best, accent) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  best.route.forEach((chain, i) => {
+    const isFirst = i === 0, isLast = i === best.route.length - 1;
+    const color = isFirst ? 'var(--accent)' : isLast ? 'var(--accent2)' : 'var(--text)';
+    const borderColor = isFirst ? 'var(--accent)' : isLast ? 'var(--accent2)' : 'var(--border)';
+    const node = document.createElement('div');
+    node.className = 'chain-node';
+    node.style.cssText = `border-color:${borderColor};color:${color};`;
+    node.innerHTML = `<span>◆ ${chain.toUpperCase()}</span>
+      ${isFirst ? '<span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">SOURCE</span>' : ''}
+      ${isLast  ? '<span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">DESTINATION</span>' : ''}`;
+    el.appendChild(node);
+
+    if (i < best.hops.length) {
+      const hop = best.hops[i];
+      const conn = document.createElement('div');
+      conn.className = 'chain-connector';
+      conn.innerHTML = `
+        <div class="connector-line">
+          <div class="vline"></div>
+          <div class="arrow">↓</div>
+          <div class="vline"></div>
+        </div>
+        <div class="connector-info">
+          <div class="connector-name">${hop.bridge}</div>
+          <div class="connector-meta">
+            <span style="color:var(--accent)">$${hop.fee_usd.toFixed(4)}</span>
+            <span style="color:var(--accent2)">~${fmt(hop.latency_sec)}</span>
+            <span style="color:var(--muted)">${(hop.reliability*100).toFixed(0)}% reliable</span>
+          </div>
+        </div>`;
+      el.appendChild(conn);
+    }
+  });
+}
+
+// ── Hop list renderer ─────────────────────────────────────────────────────────
+function renderHops(containerId, best, isLive) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  best.hops.forEach(hop => {
+    const live = hop.data_source === 'live';
+    const row = document.createElement('div');
+    row.className = 'hop-row';
+    row.innerHTML = `
+      <div>
+        <div style="font-weight:500">${hop.from} → ${hop.to}</div>
+        <div style="color:var(--muted);font-size:11px">${hop.bridge}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <span style="color:var(--accent)">$${hop.fee_usd.toFixed(4)}</span>
+        <span style="color:var(--accent2)">${fmt(hop.latency_sec)}</span>
+        ${isLive ? `<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:${live?'rgba(0,212,170,.15)':'rgba(245,158,11,.1)'};color:${live?'var(--accent)':'#f59e0b'};border:1px solid ${live?'rgba(0,212,170,.2)':'rgba(245,158,11,.25)'}">${live?'⚡ live':'⚠️ est.'}</span>` : ''}
+        <div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:3px">${(hop.reliability*100).toFixed(0)}%</div>
+          <div class="reliability-bar"><div class="reliability-fill" style="width:${hop.reliability*100}%"></div></div>
+        </div>
+      </div>`;
+    el.appendChild(row);
+  });
+}
+
+// ── SWIFT table renderer ──────────────────────────────────────────────────────
+function renderSwift(tbodyId, best, amount, swiftData) {
+  const CRYPTO_FX = 0.05;
+  const wf = swiftData?.sending_fee_usd   ?? 35;
+  const fx = swiftData?.fx_spread_pct     ?? 2.5;
+  const intermed = swiftData?.intermediary_fee_usd ?? 20;
+  const dMin = swiftData?.settlement_days_min ?? 2;
+  const dMax = swiftData?.settlement_days_max ?? 5;
+
+  const swiftFx   = amount * (fx/100);
+  const cryptoFx  = amount * (CRYPTO_FX/100);
+  const swiftTotal = wf + swiftFx + intermed;
+  const cryptoTotal = best.total_fee_usd + cryptoFx;
+  const savings = swiftTotal - cryptoTotal;
+  const savePct = ((Math.abs(savings)/swiftTotal)*100).toFixed(0);
+
+  const rows = [
+    {m:'Network Fee', c:`$${best.total_fee_usd.toFixed(2)}`, s:`$${wf.toFixed(2)} flat wire fee`, better: best.total_fee_usd < wf},
+    {m:'FX Spread',   c:`~${CRYPTO_FX}% ($${cryptoFx.toFixed(2)})`, s:`~${fx}% ($${swiftFx.toFixed(2)})`, better:true},
+    {m:'Intermediary',c:'None', s:`~$${intermed.toFixed(0)} (correspondent banks)`, better:true},
+    {m:'Settlement',  c:fmt(best.total_latency_sec), s:`${dMin}–${dMax} business days`, better:true},
+    {m:'Availability',c:'24/7/365', s:'Banking hours only', better:true},
+    {m:'Transparency',c:'On-chain audit trail', s:'Opaque', better:true},
+  ];
+
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td>${r.m}</td>
+    <td class="col-crypto${r.better?' better':''}">${r.c}</td>
+    <td class="col-swift">${r.s}</td>
+  </tr>`).join('');
+
+  const saveHtml = savings > 0
+    ? `<div class="save-amount">+$${savings.toFixed(2)}</div><div class="save-sub">${savePct}% cheaper than SWIFT on $${amount.toLocaleString()}</div>`
+    : `<div class="save-amount negative">-$${Math.abs(savings).toFixed(2)}</div><div class="save-sub">SWIFT may be cheaper at this amount</div>`;
+  tbody.innerHTML += `<tr class="save-row"><td>You Save</td><td colspan="2">${saveHtml}</td></tr>`;
+}
+
+// ── Insights renderer ─────────────────────────────────────────────────────────
+function renderInsights(elId, best, amount, swiftData) {
+  const feePct = ((best.total_fee_usd/amount)*100).toFixed(3);
+  const latencyStr = fmt(best.total_latency_sec);
+  const swiftTotal = swiftData?.total_cost_usd ?? (amount*0.025+55);
+  const savings = (swiftTotal - best.total_fee_usd).toFixed(2);
+  const el = document.getElementById(elId);
+
+  const reliabilities = best.hops.map(h => h.reliability);
+  const combined = reliabilities.reduce((a,b)=>a*b, 1.0);
+  const leastReliable = best.hops.reduce((a,b)=>a.reliability<b.reliability?a:b, best.hops[0]);
+
+  const insights = [
+    `This route costs <strong style="color:var(--accent)">$${best.total_fee_usd.toFixed(2)}</strong> in fees — just <strong style="color:var(--accent)">${feePct}%</strong> of the transfer amount.`,
+    `Estimated settlement: <strong style="color:var(--accent2)">${latencyStr}</strong> across ${best.num_hops} bridge hop${best.num_hops!==1?'s':''}.`,
+    parseFloat(savings) > 0
+      ? `Saves approximately <strong style="color:var(--accent)">$${savings}</strong> compared to a SWIFT wire (~$${swiftTotal.toFixed(0)}).`
+      : `At this amount, a SWIFT wire may actually be cheaper — consider larger transfers to improve efficiency.`,
+    best.num_hops > 1
+      ? `Combined route reliability is <strong style="color:var(--text)">${(combined*100).toFixed(1)}%</strong>. Watch out for <strong style="color:var(--accent3)">${leastReliable.bridge}</strong> (${(leastReliable.reliability*100).toFixed(0)}% per-hop reliability).`
+      : `Single-hop route — lower smart contract risk than multi-hop alternatives.`,
+  ];
+
+  el.innerHTML = insights.map(i=>`<div style="margin-bottom:10px">${i}</div>`).join('');
+}
+
+// ── Other routes renderer ─────────────────────────────────────────────────────
+function renderOtherRoutes(elId, allRoutes) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  const others = allRoutes.slice(1);
+  if (!others.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px">No alternative routes found.</div>'; return; }
+  others.forEach((r,i) => {
+    const row = document.createElement('div');
+    row.className = 'other-route-row';
+    row.innerHTML = `
+      <span class="route-rank">#${i+2}</span>
+      <span style="flex:1;color:var(--text)">${r.route.join(' → ')}</span>
+      <span style="color:var(--accent);margin-right:16px">$${r.total_fee_usd.toFixed(2)}</span>
+      <span style="color:var(--accent2);margin-right:16px">${fmt(r.total_latency_sec)}</span>
+      <span style="color:var(--muted)">score: ${r.score}</span>`;
+    el.appendChild(row);
+  });
+}
+
+// ── Chart toggle ──────────────────────────────────────────────────────────────
+async function toggleChart(tab) {
+  const toggle = document.getElementById(`${tab}ChartToggle`);
+  const body   = document.getElementById(`${tab}ChartBody`);
+  const isOpen = toggle.classList.toggle('open');
+  body.classList.toggle('open', isOpen);
+
+  if (isOpen && !state[tab].chartLoaded) {
+    await loadChartData(tab);
+  } else if (isOpen && state[tab].chartData) {
+    renderChart(tab);
+  }
+}
+
+async function loadChartData(tab) {
+  const loading = document.getElementById(`${tab}ChartLoading`);
+  const content = document.getElementById(`${tab}ChartContent`);
+  loading.style.display = 'flex';
+  content.style.display = 'none';
+
+  const s = state[tab];
+  const url = tab === 'live' ? '/api/route/sensitivity' : '/api/sim/sensitivity';
+
+  try {
+    const res = await fetch(url, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({route: s.route, stablecoin: s.stablecoin})
+    });
+    const data = await res.json();
+    s.chartData = data.points;
+    s.chartLoaded = true;
+    loading.style.display = 'none';
+    content.style.display = 'block';
+    renderChart(tab);
+  } catch(e) {
+    loading.innerHTML = `<span style="color:var(--accent3)">Failed to load chart data.</span>`;
+  }
+}
+
+function switchChartView(tab, view) {
+  state[tab].chartView = view;
+  // Update tab active states
+  const content = document.getElementById(`${tab}ChartContent`);
+  content.querySelectorAll('.chart-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', i === ['fee','pct','vs'].indexOf(view));
+  });
+  renderChart(tab);
+}
+
+function renderChart(tab) {
+  const s = state[tab];
+  if (!s.chartData) return;
+
+  const points = s.chartData;
+  const isBlue = tab === 'sim';
+  const accent = isBlue ? '#0099ff' : '#00d4aa';
+  const accent2 = '#ff6b35';
+  const labels = points.map(p => fmtAmt(p.amount));
+
+  let datasets, yLabel;
+
+  if (s.chartView === 'fee') {
+    datasets = [{
+      label: 'Bridge Fee (USD)', data: points.map(p => p.fee_usd),
+      borderColor: accent, backgroundColor: accent+'22', fill:true, tension:.4, pointRadius:4, pointBackgroundColor:accent,
+    }];
+    yLabel = 'Fee (USD)';
+  } else if (s.chartView === 'pct') {
+    datasets = [{
+      label: 'Fee as % of Amount', data: points.map(p => p.fee_pct),
+      borderColor: accent, backgroundColor: accent+'22', fill:true, tension:.4, pointRadius:4, pointBackgroundColor:accent,
+    }];
+    yLabel = 'Fee (%)';
+  } else {
+    datasets = [
+      {
+        label: 'Bridge Fee (USD)', data: points.map(p => p.fee_usd),
+        borderColor: accent, backgroundColor: accent+'22', fill:true, tension:.4, pointRadius:4, pointBackgroundColor:accent,
+      },
+      {
+        label: 'SWIFT Cost (USD)', data: points.map(p => p.swift_usd),
+        borderColor: accent2, backgroundColor: accent2+'22', fill:true, tension:.4, pointRadius:4, pointBackgroundColor:accent2,
+        borderDash: [5,5],
+      }
+    ];
+    yLabel = 'Cost (USD)';
+  }
+
+  const ctx = document.getElementById(`${tab}Chart`).getContext('2d');
+  if (s.chartInstance) s.chartInstance.destroy();
+
+  s.chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color:'#4a6380', font:{size:11}, boxWidth:12 } },
+        tooltip: {
+          backgroundColor:'#0b1118', borderColor:'#1a2332', borderWidth:1,
+          titleColor:'#e8f0f7', bodyColor:'#4a6380',
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              return s.chartView === 'pct' ? ` ${v.toFixed(4)}%` : ` $${v.toFixed(2)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks:{color:'#4a6380',font:{size:11}}, grid:{color:'rgba(26,35,50,.6)'} },
+        y: {
+          ticks:{color:'#4a6380',font:{size:11}, callback: v => s.chartView==='pct'?`${v}%`:`$${v}`},
+          grid:{color:'rgba(26,35,50,.6)'},
+          title:{display:true, text:yLabel, color:'#4a6380', font:{size:10}},
+        }
+      }
+    }
+  });
+}
+
+// ── LIVE: find route ──────────────────────────────────────────────────────────
+async function findLiveRoute() {
+  const source = document.getElementById('liveSource').value;
+  const target = document.getElementById('liveTarget').value;
+  const amount = parseFloat(document.getElementById('liveAmount').value);
+  const fee_weight = document.getElementById('liveFeeWeight').value;
+  const stablecoin = document.getElementById('liveToken').value;
+
+  const btn = document.getElementById('liveBtn');
+  const results = document.getElementById('liveResults');
+  const errorEl = document.getElementById('liveError');
+  const progressBox = document.getElementById('progressBox');
+  const progressLog = document.getElementById('progressLog');
+
+  if (source === target) { showError('liveError','Source and destination must differ.'); return; }
+  errorEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Routing...';
+  results.classList.remove('visible');
+  progressBox.style.display = 'block'; progressLog.innerHTML = '';
+
+  // Reset chart state
+  state.live.chartLoaded = false; state.live.chartData = null;
+  resetChart('live');
+
+  const addLog = (msg, color) => {
+    const line = document.createElement('div');
+    line.style.color = color || 'var(--text)';
+    line.textContent = msg;
+    progressLog.appendChild(line);
+  };
+
+  try {
+    const swiftPromise = fetch('/api/swift_estimate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount})}).then(r=>r.json()).catch(()=>null);
+
+    const res = await fetch('/api/route/stream',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source,target,amount,fee_weight,stablecoin})});
+    const reader = res.body.getReader(); const dec = new TextDecoder();
+    let buf='', routeData=null;
+
+    while(true) {
+      const {done,value} = await reader.read(); if(done) break;
+      buf += dec.decode(value,{stream:true});
+      const lines = buf.split('\n\n'); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const msg = JSON.parse(line.slice(6));
+        if (msg.type==='status') addLog('→ '+msg.message,'var(--muted)');
+        else if (msg.type==='hop') addLog(msg.message,'var(--accent)');
+        else if (msg.type==='error') { showError('liveError',msg.message); progressBox.style.display='none'; return; }
+        else if (msg.type==='result') routeData = msg.data;
+      }
+    }
+
+    if (routeData) {
+      const swiftData = await swiftPromise;
+      progressBox.style.display = 'none';
+
+      const best = routeData.best;
+      state.live.route      = best.route;
+      state.live.amount     = amount;
+      state.live.stablecoin = stablecoin;
+
+      document.getElementById('liveScoreVal').textContent = `score: ${best.score} · ${stablecoin}`;
+      renderRoutePath('liveRoutePath', best, 'green');
+      document.getElementById('liveStatFee').textContent     = `$${best.total_fee_usd.toFixed(2)}`;
+      document.getElementById('liveStatLatency').textContent = fmt(best.total_latency_sec);
+      document.getElementById('liveStatHops').textContent    = `${best.num_hops} hop${best.num_hops!==1?'s':''}`;
+      renderHops('liveHopsList', best, true);
+      renderSwift('liveSwiftBody', best, amount, swiftData);
+      renderInsights('liveInsights', best, amount, swiftData);
+      renderOtherRoutes('liveOtherRoutes', routeData.all_routes);
+
+      results.classList.add('visible');
+    }
+  } catch(e) {
+    showError('liveError','Could not connect to server. Make sure app.py is running.');
+    progressBox.style.display = 'none';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Find Best Route →';
+  }
+}
+
+// ── SIMULATOR: find route ─────────────────────────────────────────────────────
+async function findSimRoute() {
+  const source = document.getElementById('simSource').value;
+  const target = document.getElementById('simTarget').value;
+  const amount = parseFloat(document.getElementById('simAmount').value);
+  const fee_weight = document.getElementById('simFeeWeight').value;
+  const stablecoin = document.getElementById('simToken').value;
+
+  const btn = document.getElementById('simBtn');
+  const results = document.getElementById('simResults');
+
+  if (source === target) { showError('simError','Source and destination must differ.'); return; }
+  document.getElementById('simError').style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Simulating...';
+  results.classList.remove('visible');
+
+  state.sim.chartLoaded = false; state.sim.chartData = null;
+  resetChart('sim');
+
+  const simProgressBox = document.getElementById('simProgressBox');
+  const simProgressLog = document.getElementById('simProgressLog');
+  simProgressBox.style.display = 'block';
+  simProgressLog.innerHTML = '';
+
+  function simLog(msg) {
+    const line = document.createElement('div');
+    line.textContent = msg;
+    line.style.opacity = '0';
+    line.style.transition = 'opacity 0.2s';
+    simProgressLog.appendChild(line);
+    requestAnimationFrame(() => line.style.opacity = '1');
+  }
+
+  simLog('Building route graph...');
+  await new Promise(r => setTimeout(r, 60));
+  simLog(`Finding paths: ${source} → ${target}...`);
+  await new Promise(r => setTimeout(r, 80));
+  simLog('Scoring routes by fee, latency and reliability...');
+  await new Promise(r => setTimeout(r, 60));
+
+  try {
+    const [routeRes, swiftRes] = await Promise.all([
+      fetch('/api/sim/route',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source,target,amount,fee_weight,stablecoin})}),
+      fetch('/api/swift_estimate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({amount})})
+    ]);
+
+    if (!routeRes.ok) {
+      const err = await routeRes.json();
+      showError('simError', err.error || 'No route found.');
+      return;
+    }
+
+    const routeData = await routeRes.json();
+    const swiftData = await swiftRes.json();
+    const best = routeData.best;
+
+    state.sim.route      = best.route;
+    state.sim.amount     = amount;
+    state.sim.stablecoin = stablecoin;
+
+    document.getElementById('simScoreVal').textContent = `score: ${best.score} · ${stablecoin}`;
+    renderRoutePath('simRoutePath', best, 'blue');
+    document.getElementById('simStatFee').textContent     = `$${best.total_fee_usd.toFixed(2)}`;
+    document.getElementById('simStatLatency').textContent = fmt(best.total_latency_sec);
+    document.getElementById('simStatHops').textContent    = `${best.num_hops} hop${best.num_hops!==1?'s':''}`;
+    renderHops('simHopsList', best, false);
+    renderSwift('simSwiftBody', best, amount, swiftData);
+    renderInsights('simInsights', best, amount, swiftData);
+    renderOtherRoutes('simOtherRoutes', routeData.all_routes);
+
+    simLog(`✓ Best route found — ${best.num_hops} hop${best.num_hops!==1?'s':''}, $${best.total_fee_usd.toFixed(2)} fee`);
+    await new Promise(r => setTimeout(r, 400));
+    simProgressBox.style.display = 'none';
+    results.classList.add('visible');
+  } catch(e) {
+    showError('simError','Could not connect to server.');
+    simProgressBox.style.display = 'none';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simulate Route →';
+  }
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function resetChart(tab) {
+  const toggle = document.getElementById(`${tab}ChartToggle`);
+  const body   = document.getElementById(`${tab}ChartBody`);
+  const content = document.getElementById(`${tab}ChartContent`);
+  const loading = document.getElementById(`${tab}ChartLoading`);
+  toggle.classList.remove('open');
+  body.classList.remove('open');
+  content.style.display = 'none';
+  if (tab === 'live') loading.style.display = 'flex';
+  else loading.style.display = 'none';
+  if (state[tab].chartInstance) { state[tab].chartInstance.destroy(); state[tab].chartInstance = null; }
+}
+</script>
+</body>
+</html>
