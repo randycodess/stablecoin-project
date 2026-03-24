@@ -19,7 +19,7 @@ import math
 import numpy as np
 import networkx as nx
 from typing import List
-from router.lifi import get_live_quote
+from router.across import get_live_quote
 
 
 def simulate_route(

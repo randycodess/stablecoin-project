@@ -28,7 +28,7 @@ def find_best_route(G, source, target, amount_usd, max_hops=4,
     # Pre-fetch quotes (live mode only)
     quote_cache = {}
     if use_live:
-        from router.lifi import get_quotes_parallel
+        from router.across import get_quotes_parallel
         unique_hops = {(p[i], p[i+1]) for p in all_paths for i in range(len(p)-1)}
         quote_cache = get_quotes_parallel(list(unique_hops), stablecoin, amount_usd)
 

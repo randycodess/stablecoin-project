@@ -89,7 +89,7 @@ def get_route_stream():
     pq = queue.Queue()
 
     def run():
-        from router.lifi import get_live_quote, CHAIN_MAP
+        from router.across import get_live_quote, CHAIN_MAP
         from concurrent.futures import ThreadPoolExecutor, as_completed
         import networkx as nx
 
@@ -193,7 +193,7 @@ def route_sensitivity():
     AMOUNTS = [100, 500, 1_000, 5_000, 10_000, 50_000, 100_000, 500_000, 1_000_000]
     hops = [(route[i], route[i+1]) for i in range(len(route)-1)]
 
-    from router.lifi import get_live_quote
+    from router.across import get_live_quote
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     def fetch_for_amount(amt):
@@ -210,10 +210,14 @@ def route_sensitivity():
 
     results = []
     with ThreadPoolExecutor(max_workers=8) as ex:
-        for r in [f.result() for f in as_completed(
-                {ex.submit(fetch_for_amount, a): a for a in AMOUNTS})]:
-            if r:
-                results.append(r)
+        futures = {ex.submit(fetch_for_amount, a): a for a in AMOUNTS}
+        for future in as_completed(futures):
+            try:
+                r = future.result()
+                if r:
+                    results.append(r)
+            except Exception as exc:
+                print(f"  [sensitivity] Future error for amount {futures[future]}: {exc}")
 
     results.sort(key=lambda x: x["amount"])
     return jsonify({"points": results, "stablecoin": stablecoin})
