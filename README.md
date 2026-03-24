@@ -53,7 +53,7 @@ No API key needed for the Simulator. For the Live tab, Across Protocol's public 
 ## Project Structure
 
 ```
-stablecoin-settlement-router-prototype/
+stablecoin-project/
 ├── app.py                # Flask server + all API endpoints
 ├── templates/
 │   └── index.html        # Dashboard UI (Live + Simulator tabs)
