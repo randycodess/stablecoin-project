@@ -59,7 +59,7 @@ stablecoin-settlement-router-prototype/
 │   └── index.html        # Dashboard UI (Live + Simulator tabs)
 ├── router/
 │   ├── network.py        # Builds the chain/bridge graph (live and sim)
-│   ├── lifi.py           # Across Protocol API integration (live quotes)
+│   ├── across.py           # Across Protocol API integration (live quotes)
 │   ├── simulator.py      # Route cost calculation (live or mock)
 │   └── engine.py         # Routing engine — finds and scores all paths
 ├── data/
