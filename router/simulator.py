@@ -15,6 +15,7 @@ for what cross-chain bridges actually charge. Could tune these later
 with real API data.
 """
 
+import math
 import numpy as np
 import networkx as nx
 from typing import List
@@ -48,7 +49,8 @@ def simulate_route(
         edge = G.get_edge_data(src, dst)
 
         if edge is None:
-            print(f"  [simulator] WARNING: No bridge found {src} -> {dst}")
+            print(f"  [simulator] WARNING: No bridge found {src} -> {dst}, skipping hop")
+            # Skipped hop: route result will have fewer hops than route length - 1
             continue
 
         # Use cached quote if available, otherwise fetch live
@@ -65,7 +67,7 @@ def simulate_route(
         else:
             # Fall back to mock data with noise
             base_fee = edge["base_fee_usd"]
-            pct_fee = edge["fee_pct"] * amount_usd
+            pct_fee = edge["fee_rate"] * amount_usd
             noise = np.random.normal(1.0, noise_factor)
             hop_fee = max(0, (base_fee + pct_fee) * noise)
 
@@ -120,12 +122,13 @@ def score_route(simulation_result: dict, fee_weight: float = 0.6) -> float:
 
     # Reliability penalty: combined route reliability (product of all hops).
     # A perfectly reliable route scores 0 extra; a 50% reliable route adds ~0.69.
-    import math
     hops = simulation_result.get("hops", [])
     if hops:
         combined_reliability = 1.0
         for hop in hops:
             combined_reliability *= hop.get("reliability", 1.0)
+        # Clamp to avoid math.log(0) if reliability is somehow 0
+        combined_reliability = max(combined_reliability, 1e-9)
         # -log(reliability) is 0 at 100%, grows as reliability drops
         reliability_penalty = -math.log(combined_reliability) * 0.5
     else:

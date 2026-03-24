@@ -61,8 +61,14 @@ class TestSimulator:
         assert large["total_fee_usd"] > small["total_fee_usd"]
 
     def test_score_lower_is_better(self, live_network):
-        cheap = {"total_fee_usd": 1.0, "total_latency_sec": 30, "num_hops": 1}
-        expensive = {"total_fee_usd": 10.0, "total_latency_sec": 600, "num_hops": 3}
+        cheap = {
+            "total_fee_usd": 1.0, "total_latency_sec": 30, "num_hops": 1,
+            "hops": [{"reliability": 0.99}],
+        }
+        expensive = {
+            "total_fee_usd": 10.0, "total_latency_sec": 600, "num_hops": 3,
+            "hops": [{"reliability": 0.95}, {"reliability": 0.94}, {"reliability": 0.93}],
+        }
         assert score_route(cheap) < score_route(expensive)
 
 

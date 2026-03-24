@@ -124,9 +124,15 @@ def get_route_stream():
                 return hop, r
 
             with ThreadPoolExecutor(max_workers=8) as ex:
-                for hop, result in [f.result() for f in as_completed(
-                        {ex.submit(fetch, h): h for h in supported})]:
-                    quote_cache[hop] = result
+                futures = {ex.submit(fetch, h): h for h in supported}
+                for future in as_completed(futures):
+                    try:
+                        hop, result = future.result()
+                        quote_cache[hop] = result
+                    except Exception as exc:
+                        hop = futures[future]
+                        print(f"  [stream] Future error for {hop}: {exc}")
+                        quote_cache[hop] = None
 
             for hop in unique_hops - set(supported):
                 quote_cache[hop] = None

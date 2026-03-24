@@ -15,7 +15,7 @@ def _build(chains, bridges):
     for b in bridges:
         G.add_edge(b["from_chain"], b["to_chain"],
                    bridge_name=b["name"], base_fee_usd=b["base_fee_usd"],
-                   fee_pct=b["fee_pct"], avg_latency_sec=b["avg_latency_sec"],
+                   fee_rate=b["fee_rate"], avg_latency_sec=b["avg_latency_sec"],
                    reliability=b["reliability"],
                    supported_stablecoins=b.get("supported_stablecoins", ["USDC"]))
     return G
